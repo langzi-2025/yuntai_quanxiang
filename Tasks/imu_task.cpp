@@ -51,7 +51,7 @@ void ImuInit() {
                               0.0f, 0.0f, 0.0f, 1.0f};
 
   /**< Mahony 滤波器 kp 参数 */
-  float mahony_kp = 0.5f; ///< Mahony 滤波器 kp 参数
+  float mahony_kp = 1.0f; ///< Mahony 滤波器 kp 参数
   float mahony_ki = 0.0f; ///< Mahony 滤波器 ki 参数
 
   /**< Mahony 滤波器初始四元数，[w, x, y, z] */

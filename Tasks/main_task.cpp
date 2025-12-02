@@ -30,6 +30,7 @@
 #include "dm4310_drv.hpp"
 #include "iwdg.h"
 #include "math.h"
+#include "imu_task.hpp"
 /* Private macro -------------------------------------------------------------*/
 /* Private constants ---------------------------------------------------------*/
 /* Private types -------------------------------------------------------------*/
@@ -44,7 +45,10 @@ static const uint8_t kRxBufLen = remote_control::kRcRxDataLen;
 static uint8_t rx_buf[kRxBufLen];
 remote_control::DT7 *rc_ptr;
 
-void RobotInit(void) { rc_ptr = new remote_control::DT7(); }
+void RobotInit(void) { 
+  rc_ptr = new remote_control::DT7(); 
+  ImuInit();
+}
 
 void MainInit(void) {
   RobotInit();
@@ -66,11 +70,14 @@ void MainInit(void) {
 }
 
 void MainTask(void) {
-  tick++;
+  // tick++;
+  ImuUpdate();
   if(tick<1000)
   {
+
     return;
   }
+  
   int16_t temp1 = (rc_ptr->rc_lv())*1000.0f;
   int16_t temp2 = (rc_ptr->rc_lh())*1000.0f;
   uint8_t kong[8]={0,0,0,0,0,0,0,0};
