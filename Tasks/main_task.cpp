@@ -70,13 +70,12 @@ void MainInit(void) {
 }
 
 void MainTask(void) {
-  // tick++;
+  tick++;
   ImuUpdate();
-  if(tick<10000)
+  if(tick<1000)
   {
     return;
   }
-  
   int16_t temp1 = (rc_ptr->rc_lv())*1000.0f;
   int16_t temp2 = (rc_ptr->rc_lh())*1000.0f;
   uint8_t kong[8]={0,0,0,0,0,0,0,0};
