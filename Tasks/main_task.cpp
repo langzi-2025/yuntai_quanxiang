@@ -8,7 +8,7 @@
  */
 /**
 *******************************************************************************
-* @file      :main_task.cpp
+ * @file      :main_task.cpp
 * @brief     :
 * @history   :
 *  Version     Date            Author          Note
@@ -72,9 +72,8 @@ void MainInit(void) {
 void MainTask(void) {
   // tick++;
   ImuUpdate();
-  if(tick<1000)
+  if(tick<10000)
   {
-
     return;
   }
   
