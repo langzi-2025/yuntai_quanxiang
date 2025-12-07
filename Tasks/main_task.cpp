@@ -37,14 +37,17 @@
 /* Private variables ---------------------------------------------------------*/
 /* External variables --------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
-
+float imu_calc(float now_angle,float raw_angle);
 uint32_t tick = 0;
 
 namespace remote_control = hello_world::devices::remote_control;
 static const uint8_t kRxBufLen = remote_control::kRcRxDataLen;
 static uint8_t rx_buf[kRxBufLen];
 remote_control::DT7 *rc_ptr;
-
+float euler_angles_raw[3] = {0.0f, 0.0f, 0.0f};
+int state_imu = 0;
+extern float gyro_data[3];
+extern float euler_angles[3];
 void RobotInit(void) { 
   rc_ptr = new remote_control::DT7(); 
   ImuInit();
@@ -68,14 +71,32 @@ void MainInit(void) {
   // 开启定时器
   HAL_TIM_Base_Start_IT(&htim6);
 }
-
+//euler[0]yaw,euler[1]roll,euler[2]pitch
+//-0.0048
+//逆时针加，顺时针减
+//gyro_data[2]yaw,gyro_data[0]pitch,gyro_data[1]roll
+//rc_rh有0.01的偏差，极限一样，注意
 void MainTask(void) {
   tick++;
   ImuUpdate();
-  if(tick<1000)
+  if(tick<6000)
   {
     return;
   }
+  if(tick%1000==0)
+  {
+    euler_angles[0]+=0.0077;
+  }
+  if(state_imu == 0)
+  {
+    for(int i=0;i<3;i++)
+    {
+      euler_angles_raw[i] = euler_angles[i];
+    }
+    state_imu = 1;
+  }
+  int16_t rc_rv_temp = (rc_ptr->rc_rv())*1000.0f;
+  int16_t rc_rh_temp = (rc_ptr->rc_rh()-0.01)*1000.0f;
   int16_t temp1 = (rc_ptr->rc_lv())*1000.0f;
   int16_t temp2 = (rc_ptr->rc_lh())*1000.0f;
   uint8_t kong[8]={0,0,0,0,0,0,0,0};
@@ -83,7 +104,19 @@ void MainTask(void) {
   kong[1] = (uint8_t)(temp1);
   kong[2] = (uint8_t)(temp2>>8);
   kong[3] = (uint8_t)(temp2);
+  int16_t imu_send = (int16_t)(imu_calc(euler_angles[0],euler_angles_raw[0])*1000);
+  kong[4] = (uint8_t)(imu_send>>8);
+  kong[5] = (uint8_t)(imu_send);
+  int16_t vel_imu_yaw = (int16_t)(-gyro_data[2]*1000);
+  kong[6] = (uint8_t)(vel_imu_yaw>>8);
+  kong[7] = (uint8_t)(vel_imu_yaw);
+  uint8_t kong1[8]={0,0,0,0,0,0,0,0};
+  kong1[0] = (uint8_t)(rc_rv_temp>>8);
+  kong1[1] = (uint8_t)(rc_rv_temp);
+  kong1[2] = (uint8_t)(rc_rh_temp>>8);
+  kong1[3] = (uint8_t)(rc_rh_temp);
   CAN_Send_Msg(&hcan1,kong,0x1FF,8);
+  CAN_Send_Msg(&hcan1,kong1,0x0FE,8);
  }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
@@ -103,4 +136,16 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
 
     HAL_UARTEx_ReceiveToIdle_DMA(&huart3, rx_buf, kRxBufLen);
   }
+}
+float imu_calc(float now_angle,float raw_angle)
+{
+  if(now_angle - raw_angle <-3.14)
+  {
+    return now_angle + 6.2832 - raw_angle;
+  }
+  else if(now_angle - raw_angle > 3.1416)
+  {
+    return now_angle - 6.2832 - raw_angle;
+  }
+  return now_angle - raw_angle;
 }
