@@ -37,6 +37,12 @@
 /* Private variables ---------------------------------------------------------*/
 /* External variables --------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
+float euler_angles_raw[3] = {0.0f, 0.0f, 0.0f};
+int state_imu = 0;
+int state_pitch_dm = 0;
+Joint_Motor_t motor_pitch;
+extern float gyro_data[3];
+extern float euler_angles[3];
 float imu_calc(float now_angle,float raw_angle);
 uint32_t tick = 0;
 
@@ -44,10 +50,7 @@ namespace remote_control = hello_world::devices::remote_control;
 static const uint8_t kRxBufLen = remote_control::kRcRxDataLen;
 static uint8_t rx_buf[kRxBufLen];
 remote_control::DT7 *rc_ptr;
-float euler_angles_raw[3] = {0.0f, 0.0f, 0.0f};
-int state_imu = 0;
-extern float gyro_data[3];
-extern float euler_angles[3];
+
 void RobotInit(void) { 
   rc_ptr = new remote_control::DT7(); 
   ImuInit();
@@ -81,8 +84,19 @@ void MainTask(void) {
   ImuUpdate();
   if(tick<6000)
   {
+    if(state_pitch_dm == 1)
+    {
+      disable_motor_mode(&hcan2,0x02,MIT_MODE);
+      state_pitch_dm = 0;
+    }
     return;
   }
+  if(state_pitch_dm == 0)
+  {
+    enable_motor_mode(&hcan2,0x02,MIT_MODE);
+    state_pitch_dm = 1;
+  }
+  mit_ctrl(&hcan2,0x02,0,0,0,0,0.0f);
   if(tick%1000==0)
   {
     euler_angles[0]+=0.0077;
