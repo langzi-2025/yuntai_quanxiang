@@ -31,6 +31,7 @@
 #include "iwdg.h"
 #include "math.h"
 #include "imu_task.hpp"
+#include "pid.hpp"
 /* Private macro -------------------------------------------------------------*/
 /* Private constants ---------------------------------------------------------*/
 /* Private types -------------------------------------------------------------*/
@@ -41,8 +42,12 @@ float euler_angles_raw[3] = {0.0f, 0.0f, 0.0f};
 int state_imu = 0;
 int state_pitch_dm = 0;
 Joint_Motor_t motor_pitch;
+pid::Pid pid_pitch_pos(7.0,0,0,1.5,-1.5);
+pid::Pid pid_pitch_vel(1.9,0,0,6.5,-6.5);
 extern float gyro_data[3];
 extern float euler_angles[3];
+extern float pos_pitch;
+extern float vel_pitch;
 float imu_calc(float now_angle,float raw_angle);
 uint32_t tick = 0;
 
@@ -79,6 +84,8 @@ void MainInit(void) {
 //逆时针加，顺时针减
 //gyro_data[2]yaw,gyro_data[0]pitch,gyro_data[1]roll
 //rc_rh有0.01的偏差，极限一样，注意
+float a = -2.8f;
+float purpose_vel = 0.0f;
 void MainTask(void) {
   tick++;
   ImuUpdate();
@@ -96,6 +103,10 @@ void MainTask(void) {
     enable_motor_mode(&hcan2,0x02,MIT_MODE);
     state_pitch_dm = 1;
   }
+  pid_pitch_pos.set_error(a - pos_pitch);
+  purpose_vel = pid_pitch_pos.calc();
+  pid_pitch_vel.set_error(purpose_vel - vel_pitch);
+  //float output_temp =pid_pitch_vel.calc();
   mit_ctrl(&hcan2,0x02,0,0,0,0,0.0f);
   if(tick%1000==0)
   {

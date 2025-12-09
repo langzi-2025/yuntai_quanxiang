@@ -25,6 +25,8 @@ static CAN_RxHeaderTypeDef rx_header1, rx_header2;
 static uint8_t can1_rx_data[8], can2_rx_data[8];
 uint32_t pTxMailbox;
 int state1 = 0;
+float pos_pitch = 0;
+float vel_pitch = 0;
 extern Joint_Motor_t motor_pitch;
 
 /* External variables --------------------------------------------------------*/
@@ -114,6 +116,8 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan) {
       if (rx_header2.StdId == 0x12) { // 帧头校验
         state1++;
         dm4310_fbdata(&motor_pitch,can2_rx_data,8);// 校验通过进行具体数据处理
+        pos_pitch = motor_pitch.para.pos;
+        vel_pitch = motor_pitch.para.vel;
       }
     }
   }
