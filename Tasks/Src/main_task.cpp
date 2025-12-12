@@ -42,8 +42,8 @@ float euler_angles_raw[3] = {0.0f, 0.0f, 0.0f};
 int state_imu = 0;
 int state_pitch_dm = 0;
 Joint_Motor_t motor_pitch;
-pid::Pid pid_pitch_pos(7.0,0,0,1.5,-1.5);
-pid::Pid pid_pitch_vel(1.9,0,0,6.5,-6.5);
+pid::Pid pid_pitch_pos(10.0,0.1,0.7,15.0,-15.0);
+pid::Pid pid_pitch_vel(1.6,0.1,0,6.5,-6.5);
 extern float gyro_data[3];
 extern float euler_angles[3];
 extern float pos_pitch;
@@ -84,7 +84,7 @@ void MainInit(void) {
 //逆时针加，顺时针减
 //gyro_data[2]yaw,gyro_data[0]pitch,gyro_data[1]roll
 //rc_rh有0.01的偏差，极限一样，注意
-float a = -2.8f;
+volatile float a = -2.8f;
 float purpose_vel = 0.0f;
 void MainTask(void) {
   tick++;
@@ -93,7 +93,7 @@ void MainTask(void) {
   {
     if(state_pitch_dm == 1)
     {
-      disable_motor_mode(&hcan2,0x02,MIT_MODE);
+      mit_ctrl(&hcan2,0x02,0,0,0,0,0.0f);
       state_pitch_dm = 0;
     }
     return;
@@ -106,8 +106,9 @@ void MainTask(void) {
   pid_pitch_pos.set_error(a - pos_pitch);
   purpose_vel = pid_pitch_pos.calc();
   pid_pitch_vel.set_error(purpose_vel - vel_pitch);
-  //float output_temp =pid_pitch_vel.calc();
-  mit_ctrl(&hcan2,0x02,0,0,0,0,0.0f);
+  float output_temp =pid_pitch_vel.calc();
+  //float output_temp = 0.0f;
+  mit_ctrl(&hcan2,0x02,0,0,0,0,output_temp-0.9f*cosf(pos_pitch+2.9));
   if(tick%1000==0)
   {
     euler_angles[0]+=0.0077;
