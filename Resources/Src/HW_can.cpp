@@ -28,7 +28,6 @@ int state1 = 0;
 float pos_pitch = 0;
 float vel_pitch = 0;
 extern Joint_Motor_t motor_pitch;
-
 /* External variables --------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
 

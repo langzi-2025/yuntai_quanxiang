@@ -48,6 +48,7 @@ extern float gyro_data[3];
 extern float euler_angles[3];
 extern float pos_pitch;
 extern float vel_pitch;
+float purpose_pitch = -2.90f;
 float imu_calc(float now_angle,float raw_angle);
 uint32_t tick = 0;
 
@@ -84,7 +85,6 @@ void MainInit(void) {
 //逆时针加，顺时针减
 //gyro_data[2]yaw,gyro_data[0]pitch,gyro_data[1]roll
 //rc_rh有0.01的偏差，极限一样，注意
-volatile float a = -2.8f;
 float purpose_vel = 0.0f;
 void MainTask(void) {
   tick++;
@@ -98,12 +98,26 @@ void MainTask(void) {
     }
     return;
   }
+  float temp_rc_rv = rc_ptr->rc_rv();
+  if(abs(temp_rc_rv)<0.05f)
+  {
+    temp_rc_rv = 0.0f;
+  }
+  purpose_pitch -=(rc_ptr->rc_rv())*0.0003f;
+  if(purpose_pitch>-2.78f)
+  {
+    purpose_pitch = -2.78f;
+  }
+  if(purpose_pitch<-2.92f)
+  {
+    purpose_pitch = -2.92f;
+  }
   if(state_pitch_dm == 0)
   {
     enable_motor_mode(&hcan2,0x02,MIT_MODE);
     state_pitch_dm = 1;
   }
-  pid_pitch_pos.set_error(a - pos_pitch);
+  pid_pitch_pos.set_error(purpose_pitch - pos_pitch);
   purpose_vel = pid_pitch_pos.calc();
   pid_pitch_vel.set_error(purpose_vel - vel_pitch);
   float output_temp =pid_pitch_vel.calc();
