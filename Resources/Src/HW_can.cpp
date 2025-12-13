@@ -24,10 +24,11 @@
 static CAN_RxHeaderTypeDef rx_header1, rx_header2;
 static uint8_t can1_rx_data[8], can2_rx_data[8];
 uint32_t pTxMailbox;
-int state1 = 0;
+
+/*         电机数据               */
+extern Joint_Motor_t motor_pitch;
 float pos_pitch = 0;
 float vel_pitch = 0;
-extern Joint_Motor_t motor_pitch;
 /* External variables --------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
 
@@ -104,7 +105,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
  * @brief   CAN中断的回调函数，全部数据解析都在该函数中
  * @param   hcan为CAN句柄
  * @retval  none
- * @note
+ * @note    进行pitch_dm电机的数据接收
  **/
 void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan) {
 
@@ -113,7 +114,6 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan) {
         HAL_OK) // 获得接收到的数据头和数据
     {
       if (rx_header2.StdId == 0x12) { // 帧头校验
-        state1++;
         dm4310_fbdata(&motor_pitch,can2_rx_data,8);// 校验通过进行具体数据处理
         pos_pitch = motor_pitch.para.pos;
         vel_pitch = motor_pitch.para.vel;

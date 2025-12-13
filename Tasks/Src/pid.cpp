@@ -1,12 +1,12 @@
 /**
  *******************************************************************************
  * @file      :pid.cpp
- * @brief     :
+ * @brief     :负责云台的pid计算，error进来，用max与min来限幅
  * @history   :
  *  Version     Date            Author          Note
- *  V0.9.0      yyyy-mm-dd      <author>        1。<note>
+ *  V0.9.0      2025.12.13      zhangjingjie    None
  *******************************************************************************
- * @attention :
+ * @attention :原始代码，没有优化，integral的计算并不通用
  *******************************************************************************
  *  Copyright (c) 2025 Hello World Team,Zhejiang University.
  *  All Rights Reserved.

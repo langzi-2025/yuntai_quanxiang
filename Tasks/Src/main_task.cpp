@@ -32,26 +32,34 @@
 #include "math.h"
 #include "imu_task.hpp"
 #include "pid.hpp"
-struct data_receive{
-  
-};
 /* Private macro -------------------------------------------------------------*/
 /* Private constants ---------------------------------------------------------*/
 /* Private types -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 /* External variables --------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
+
+/*                    IMU初始值记录                    */
 float euler_angles_raw[3] = {0.0f, 0.0f, 0.0f};
 int state_imu = 0;
+/*                    防止重复开关dm电机                                */
 int state_pitch_dm = 0;
+/*                    dm_pitch电机数据                 */
 Joint_Motor_t motor_pitch;
 pid::Pid pid_pitch_pos(9.5,0.1,0.7,15.0,-15.0);
 pid::Pid pid_pitch_vel(1.4,0.1,0,6.5,-6.5);
-extern float gyro_data[3];
-extern float euler_angles[3];
 extern float pos_pitch;
 extern float vel_pitch;
+float purpose_vel = 0.0f;//纯碎是观察端口
 float purpose_pitch = -2.87f;
+/*                    IMU值记录                     */
+extern float gyro_data[3];
+extern float euler_angles[3];
+/*                    遥控器数据记录                    */
+float temp_rc_rv = 0.0f;
+int16_t rc_rv_temp = 0;
+int16_t rc_rh_temp = 0;
+/*                       函数声明区域                  */
 float imu_calc(float now_angle,float raw_angle);
 uint32_t tick = 0;
 
@@ -83,26 +91,27 @@ void MainInit(void) {
   // 开启定时器
   HAL_TIM_Base_Start_IT(&htim6);
 }
-//euler[0]yaw,euler[1]roll,euler[2]pitch
-//-0.0048
-//逆时针加，顺时针减
-//gyro_data[2]yaw,gyro_data[0]pitch,gyro_data[1]roll
-//rc_rh有0.01的偏差，极限一样，注意
-float purpose_vel = 0.0f;
+
 void MainTask(void) {
   tick++;
   ImuUpdate();
   if(tick<6000)
   {
+/*                  看门狗代码Pitch电机归0代码                        */
       mit_ctrl(&hcan2,0x02,0,0,0,0,0.0f);
       state_pitch_dm = 0;
       return;
   }
-  float temp_rc_rv = rc_ptr->rc_rv();
-  if(abs(temp_rc_rv)<0.05f)
+/*                 遥控器数据更新                        */
+  temp_rc_rv = rc_ptr->rc_rv();
+  rc_rv_temp = (rc_ptr->rc_rv())*1000.0f;
+  rc_rh_temp = (rc_ptr->rc_rh()-0.01)*1000.0f;
+  if(abs(temp_rc_rv)<0.05f)//遥控器数据低通滤波
   {
     temp_rc_rv = 0.0f;
   }
+
+/*                 Pitch目标位置计算代码                        */
   purpose_pitch -=(rc_ptr->rc_rv())*0.0003f;
   if(purpose_pitch>-2.78f)
   {
@@ -112,21 +121,26 @@ void MainTask(void) {
   {
     purpose_pitch = -2.92f;
   }
+/*                       电机启动                          */
   if(state_pitch_dm == 0)
   {
     enable_motor_mode(&hcan2,0x02,MIT_MODE);
     state_pitch_dm = 1;
   }
+/*                 pitch的pid计算                          */
   pid_pitch_pos.set_error(purpose_pitch - pos_pitch);
   purpose_vel = pid_pitch_pos.calc();
   pid_pitch_vel.set_error(purpose_vel - vel_pitch);
   float output_temp =pid_pitch_vel.calc();
+/*                 Pitch电机数据控制                          */
   //float output_temp = 0.0f;
   mit_ctrl(&hcan2,0x02,0,0,0,0,output_temp-0.9f*cosf(pos_pitch+2.9));
+/*                IMU零漂角速度抵消                      */
   if(tick%1000==0)
   {
     euler_angles[0]+=0.0077;
   }
+/*                     IMU初始角度初始值                             */
   if(state_imu == 0)
   {
     for(int i=0;i<3;i++)
@@ -135,8 +149,7 @@ void MainTask(void) {
     }
     state_imu = 1;
   }
-  int16_t rc_rv_temp = (rc_ptr->rc_rv())*1000.0f;
-  int16_t rc_rh_temp = (rc_ptr->rc_rh()-0.01)*1000.0f;
+/*                        数据发送                                                       */
   int16_t temp1 = (rc_ptr->rc_lv())*1000.0f;
   int16_t temp2 = (rc_ptr->rc_lh())*1000.0f;
   uint8_t kong[8]={0,0,0,0,0,0,0,0};
@@ -165,7 +178,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
     MainTask();
   }
 }
-uint8_t rx_data = 0;
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
   if (huart == &huart3) {
     if (Size == remote_control::kRcRxDataLen) {
@@ -177,6 +189,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
     HAL_UARTEx_ReceiveToIdle_DMA(&huart3, rx_buf, kRxBufLen);
   }
 }
+
 float imu_calc(float now_angle,float raw_angle)
 {
   if(now_angle - raw_angle <-3.14)
@@ -189,3 +202,16 @@ float imu_calc(float now_angle,float raw_angle)
   }
   return now_angle - raw_angle;
 }
+/**
+ * @brief       计算IMU的数据使得数据范围在-PI到PI之间
+ * @param        now_angle  当前角度, raw_angle  初始角度
+ * @retval       None
+ * @note        None
+ */
+
+ /*个人注释*/
+//euler[0]yaw,euler[1]roll,euler[2]pitch
+//-0.0048
+//逆时针加，顺时针减
+//gyro_data[2]yaw,gyro_data[0]pitch,gyro_data[1]roll
+//rc_rh有+0.01的偏差，极限一样，注意
