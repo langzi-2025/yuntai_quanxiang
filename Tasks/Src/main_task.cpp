@@ -32,6 +32,9 @@
 #include "math.h"
 #include "imu_task.hpp"
 #include "pid.hpp"
+struct data_receive{
+  
+};
 /* Private macro -------------------------------------------------------------*/
 /* Private constants ---------------------------------------------------------*/
 /* Private types -------------------------------------------------------------*/
@@ -42,13 +45,13 @@ float euler_angles_raw[3] = {0.0f, 0.0f, 0.0f};
 int state_imu = 0;
 int state_pitch_dm = 0;
 Joint_Motor_t motor_pitch;
-pid::Pid pid_pitch_pos(10.0,0.1,0.7,15.0,-15.0);
-pid::Pid pid_pitch_vel(1.6,0.1,0,6.5,-6.5);
+pid::Pid pid_pitch_pos(9.5,0.1,0.7,15.0,-15.0);
+pid::Pid pid_pitch_vel(1.4,0.1,0,6.5,-6.5);
 extern float gyro_data[3];
 extern float euler_angles[3];
 extern float pos_pitch;
 extern float vel_pitch;
-float purpose_pitch = -2.90f;
+float purpose_pitch = -2.87f;
 float imu_calc(float now_angle,float raw_angle);
 uint32_t tick = 0;
 
@@ -91,12 +94,9 @@ void MainTask(void) {
   ImuUpdate();
   if(tick<6000)
   {
-    if(state_pitch_dm == 1)
-    {
       mit_ctrl(&hcan2,0x02,0,0,0,0,0.0f);
       state_pitch_dm = 0;
-    }
-    return;
+      return;
   }
   float temp_rc_rv = rc_ptr->rc_rv();
   if(abs(temp_rc_rv)<0.05f)
